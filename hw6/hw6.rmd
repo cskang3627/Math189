@@ -1,0 +1,132 @@
+---
+title: "Homework 5"
+author: |
+  | Chance Kang / A13605546 / csk025@ucsd.edu
+  | Jayden Kim / A16271107 / s0k003@ucsd.edu
+  | Sia Sheth / A16357789 / snsheth@ucsd.edu
+  | Math 189
+  | Spring 2023
+output:
+  pdf_document: default
+  html_document: default
+---
+
+# Conceptual Question 
+1. Ridge regression adds a penalty term to the objective function of the linear regression model, which shrinks the coefficients towards zero and reduces their variance. Hence, ridge regression can be used to reduce the variance of coefficients where standard linear regression becomes unstable. A scenario would be where the sample size is too small so that the standard linear regression may have high variance. In such scenario, the ridge regression may assist in reducing variance and improving overall stablility of the model.
+
+2. 
+Contrast to the scenario given in the last question, a large sample size may be an indicator to avoid utilizing ridge regression. The variance of the estimates of the coefficients is likley to be small using standard linear regression. Hence, ridge regression may lead to biased estiates of the coefficient if the sample size is large. The ridge regression also limits one from assessing relationship between predictor and response because of the penalty term.
+
+# Application Question
+
+```{r lib import}
+library(ISLR2)
+library(glmnet)
+data(Hitters)
+```
+3.
+
+a.
+```{r data clean up}
+data.frame <- subset(Hitters, select = -c(League, Division, NewLeague))
+data.frame <- data.frame[complete.cases(data.frame),]
+dim(data.frame)
+```
+
+b.
+```{r data split}
+set.seed(123)
+train <- sample(1:nrow(data.frame), nrow(data.frame)*0.8)
+test = (-train)
+```
+
+c.
+```{r lin reg}
+lr <- lm(Salary ~ ., data = data.frame, subset = train)
+summary(lr)
+```
+
+d.
+```{r lr test}
+sqrt(mean((data.frame$Salary[test] - predict(lr, data.frame[test,]))^2))
+```
+
+e.
+The root mean squared error is larger than the residual standard error. We did expect the root mean squared error to be larger, for the root mean squared error is the square root of the variance of the residuals whereas, the residual standard error is the square root of the residual sum of squares divided by the residual degrees of freedom. Hence, the root mean squared error takes bias and variance into account whereas the residual standard error considers the variance of the residuals. Such indicates an overfitting.
+
+4.
+```{r x and y}
+x <- model.matrix(Salary ~ ., data.frame)[, -1]
+y <- data.frame$Salary
+```
+
+a.
+```{r lasso}
+lasso.mod <- glmnet(x[train, ], y[train], alpha = 1)
+
+set.seed(123)
+cv.out <- cv.glmnet(x[train,], y[train], alpha=1)
+bestlam<-cv.out$lambda.min
+bestlam
+```
+Lambda chosen (bestlam) is the smallest cross-validation error.
+
+b.
+```{r lasso coef}
+out <- glmnet(x, y, alpha = 1)
+lasso.coef <- predict(out, type = "coefficients",
+    s = bestlam)[1:17, ]
+lasso.coef
+```
+If a variable gets zeroes, it means the variable is considered not significant and excluded from the model. Hence, the zeroed variables have no effect on the response variable of the model.
+
+c.
+```{r lasso mean}
+lasso.pred <- predict(lasso.mod, s = bestlam,
+    newx = x[test, ])
+sqrt(mean((lasso.pred - y[test])^2))
+```
+
+5.
+a.
+```{r ridge}
+ridge.mod <- glmnet(x, y, alpha = 0)
+set.seed(123)
+cv.out <- cv.glmnet(x[train,], y[train], alpha = 0)
+bestlam<-cv.out$lambda.min
+bestlam
+```
+As before, lambda chosen (bestlam) is the smallest cross-validation error.
+
+b.
+```{r ridge coef}
+out <- glmnet(x, y, alpha = 0)
+ridge.coef <- predict(out, type = "coefficients",
+    s = bestlam)[1:17, ]
+ridge.coef
+lr$coefficients
+```
+
+Both of the models have relatively high positive coefficient associated to the variables Intercept, Hits, and Walks. Aside from the variable Runs, the signs of the coefficient of both models match. The maginitude of coefficients of Ridge models are relatively lower than the ones in simple linear regression.
+
+c.
+```{r ridge mean}
+ridge.pred <- predict(ridge.mod, s = bestlam,
+    newx = x[test, ])
+sqrt(mean((ridge.pred - y[test])^2))
+```
+
+6.
+```{r sd}
+sd(data.frame$Salary)
+```
+All models' RMSEs are below the standard deviation of the variable Salary from actual. However, using the LASSO model seems adequate if the purpose of the model is to find out which variables are most important for predicting a players salary. Such is because LASSO model excludes variables by setting its coefficients to 0, allowing feature selection. Hence, it is easier to deduce which variables contribute more to the Salary if LASSO model were to be used.
+
+# Contribution
+Our group homework process goes as the following:\
+1. Each member attempts to complete the homework\
+2. Compare and discuss the answers\
+3. Complete a finalized version to submit\
+All members have contributed about the equal amount to complete this homework.  
+
+

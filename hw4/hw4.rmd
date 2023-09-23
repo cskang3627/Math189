@@ -1,0 +1,104 @@
+---
+title: "Homework 4"
+author: |
+  | Chance Kang / A13605546 / csk025@ucsd.edu
+  | Jayden Kim / A16271107 / s0k003@ucsd.edu
+  | Sia Sheth / A16357789 / snsheth@ucsd.edu
+  | Math 189
+  | Spring 2023
+output:
+  pdf_document: default
+  html_document: default
+---
+
+# Conceptual Question 
+1. Type-1 error is usually considered more serious or worse. However, we believe that the seriousness of the type errors depend on the context and result of the errors. 
+Type-1 error would relatively be worse where false positive results can lead to a significant problem. For example, suppose a medical facility performs test on patients to quarantine those who has Coronavirus. If a patient receives a type-1 error (a false postive) result of Coronavirus, then the patient will most likley catch the Cornavirus they did not have.
+Type-2 error would relatively be worse where false negative results can lead to a significant problem. For example, suppose a concert venue performs a security checks on audiences and their belongings for general safety. If a type-2 error of letting individuals with weapons inside the venue were to occur, then the safety of the venue is no longer guaranteed. 
+
+# Application Question
+
+
+2.
+```{r nutri}
+nutri<-read.csv(file= "./nutrients.csv")
+```
+
+a.
+```{r nutri sd mean}
+nutri_mean <- apply(nutri,2,mean)
+nutri_sd <- apply(nutri,2,sd)
+nutri_mean
+nutri_sd
+```
+
+b.
+```{r nutri t test}
+t.test(nutri[,"calcium"],alternative = "two.sided", mu=1000, conf.level=0.95)
+t.test(nutri[,"iron"],alternative = "two.sided", mu=15, conf.level=0.95) 
+t.test(nutri[,"protein"],alternative = "two.sided", mu=60, conf.level=0.95) 
+t.test(nutri[,"vitaminA"],alternative = "two.sided", mu=800, conf.level=0.95) 
+t.test(nutri[,"vitaminC"],alternative = "two.sided", mu=75, conf.level=0.95) 
+```
+
+c.
+$H_0$: Population mean = recommended value for the nutrient\
+$H_1$: Population mean != recommended value for the nutrient\
+Based the results of the above t-tests, we can conclude that:
+* Calcium: p-value < 2.2-16 indicates that we reject the null hypothesis. Since sample mean = 624.0493mg and population mean = 1000mg, the US women are not meeting the recommended intake for calcium\
+* Iron: p-value < 2.2-16 indicates that we reject the null hypothesis. Since sample mean = 11.1299mg and population mean = 15mg, the US women are not meeting the recommended intake for iron
+* Protein: p-value = 3.3-07 indicates that we reject the null hypothesis. Since sample mean = 65.80344g and population mean = 60g, the US women are exceeding the recommended intake for protein
+* Vitamin A: p-value = 0.5103 indicates that we fail to reject the null hypothesis. We are unable to conclude whether or not US women are meeting or not meeting the recommended intake for vitamin A from this sample.
+* Vitamin C: p-value = 0.1477 indicates that we fail to reject the null hypothesis. We are unable to conclude whether or not US women are meeting or not meeting the recommended intake for vitamin C from this sample.\
+
+Since the US women are not meeting the recommended intake for calcium and iron, we would recommend them to increase intake of foods that contain these nutrients and/or take supplements for these nutrients. If the US women continue to not meet the recommended intake for calcium and iron, it may result in deficiencies and health problems. Although protein intake exceeded the recommended amount by 5.80344g, it is usually not an issue to overconsume protein by a small amount as it is an essential macronutrient.
+
+3.
+```{r multiple}
+mult <- read.table(file="./multiple.txt")
+```
+
+a.
+```{r mult ttest}
+pv_t <- function(x) 
+{ v0 <-numeric(100)
+  return(t.test(x,alternative="two.sided",conf.level=0.9)$p.value)
+}
+pmult <- apply(mult, 2, match.fun(pv_t))
+```
+
+b.
+```{r type errors}
+sum(pmult[11:50]<0.10) # type 1
+sum(pmult[1:10]>0.10) # type 2
+sum(pmult[11:50] < 0.1)/sum(pmult < 0.1) #FDP
+```
+
+c.
+```{r type errors bon}
+bonf <- p.adjust(pmult,method="bonferroni")
+sum(bonf[11:50] < 0.1) # type 1
+sum(bonf[1:10] > 0.1) # type 2
+sum(bonf[11:50] < 0.1)/sum(bonf < 0.1) #FDP
+
+```
+
+d.
+```{r type errors BH}
+bh <- p.adjust(pmult,method="BH")
+sum(bh[11:50] < 0.1) # type 1
+sum(bh[1:10] > 0.1) # type 2
+sum(bh[11:50] < 0.1)/sum(bh < 0.1) #FDP
+```
+
+From 3b, we obtained 4 type-1 errors, 0 type-2 errors, and FDP= 0.2857143. Whereas in 3c and 3d, We obtained FDP = 0. These results make sense as 3b we did not adjust the p-values for multiple hypothesis testing. In
+adjust the p-values. The Bonferroni correction protects against type-1 errors, which is what we observe. In 3d the p-values. The BH procedure accepts a certain threshold of type-1 errors and reduces the chance of type observe.
+
+# Contribution
+Our group homework process goes as the following:\
+1. Each member attempts to complete the homework\
+2. Compare and discuss the answers\
+3. Complete a finalized version to submit\
+All members have contributed about the equal amount to complete this homework.  
+
+

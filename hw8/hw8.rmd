@@ -1,0 +1,120 @@
+---
+title: "Homework 8"
+author: |
+  | Chance Kang / A13605546 / csk025@ucsd.edu
+  | Jayden Kim / A16271107 / s0k003@ucsd.edu
+  | Sia Sheth / A16357789 / snsheth@ucsd.edu
+  | Math 189
+  | Spring 2023
+output:
+  pdf_document: default
+  html_document: default
+---
+
+# Conceptual Question 
+1. 
+A random forest is a learning algorithm that combines the predictions of multiple decision trees. During training, decision trees are built using random subsets of the data and features. When making a prediction, each tree independently classifies the input, and the final prediction is determined by majority voting (for classification) or averaging (for regression) the individual tree predictions. This aggregation of predictions improves accuracy and handles complex patterns.
+
+
+# Application Question
+
+```{r lib import}
+library(ISLR2)
+library(MASS)
+library(randomForest)
+library(tree)
+library(caret)
+data(Bikeshare)
+```
+
+2.
+```{r lm}
+bike <- subset(Bikeshare, select = -c(casual, registered))
+
+bike$season <- as.factor(bike$season)
+bike$holiday <- as.factor(bike$holiday)
+bike$weekday <- as.factor(bike$weekday)
+bike$workingday <- as.factor(bike$workingday)
+
+set.seed(123)
+train<-sample(1:nrow(bike), nrow(bike)*0.8)
+test<-(-train)
+train_s <- bike[train,]
+test_s <- bike[test,]
+
+bike_lm <- lm(bikers ~ ., data = train_s)
+
+bike_aic <- stepAIC(bike_lm, direction="both")
+bike_pred <- predict(bike_aic, data = test_s)
+bike_rmse <- sqrt(mean((test_s$bikers - bike_pred)^2))
+
+summary(bike_aic)
+print(bike_rmse)
+print(sd(bike$bikers))
+```
+RMSE value surpassed standard deviation of `bikers`, hence not a great performance. 
+
+3.
+The `casual` and `registered` variables were removed from the set. The following variables were already given and kept as factors: `mnth`, `hr`, `weathersit`. 
+
+The following variables were converted to factors:
+
+* `holiday` and `workinday` variable uses 1 for yes and 0 for no
+* `season` uses 1,2,3,4 for Winter, Spring, Summer, and Fall
+* `weekday` uses 0 ~ 6 for Sunday, Monday, Tuesday, etc
+hence immediate that they are categorical. 
+
+Rest of the variables were kept the same (numerical).
+
+As suggested on course Piazza forum, bi-direction `stepAIC` function from `MASS` package was utilized for variable selection.
+
+We split the train and test set as 80:20 ratio using random sample, for many previous homework applied the same ratio.
+
+4.
+```{r RF}
+set.seed(123)
+bike_rf <- randomForest(bikers~., data = bike, subset = train, mtry = 1, ntree = 100, importance = TRUE, keep.forest = TRUE)
+x.train = train_s[,1:12]
+y.train = train_s[,13]
+set.seed(123)
+tuneRF(x = x.train, y = y.train, ntreeTry = 200, mtrystart = 2, stepFactor = 1.5, improve = 0.01, trace = FALSE)
+```
+```{r tuned}
+bike_rf_tuned <- randomForest(bikers~., data = train_s, ntree = 200, mtry = 9, importance = TRUE)
+bike_rf_pred <- predict(bike_rf_tuned, newdata = test_s)
+bike_rf_rmse <- sqrt(mean((test_s$bikers - bike_rf_pred)^2))
+
+bike_rf_rmse
+```
+5.
+The `casual` and `registered` variables were removed from the set. The following variables were already given and kept as factors: `mnth`, `hr`, `weathersit`. 
+
+The following variables were converted to factors:
+
+* `holiday` and `workinday` variable uses 1 for yes and 0 for no
+* `season` uses 1,2,3,4 for Winter, Spring, Summer, and Fall
+* `weekday` uses 0 ~ 6 for Sunday, Monday, Tuesday, etc
+hence immediate that they are categorical. 
+
+Rest of the variables were kept the same (numerical).
+
+We split the train and test set as 80:20 ratio using random sample, for many previous homework applied the same ratio.
+
+We have attempted a `k = 5` fold cross validation attempting to split the training set in to 5 folds, but due to the time consumption we have resorted to fitting an initial (base) fit with `ntree = 100` and `mtry = 1` then improving the fit through the `tuneRF()` function of the same package to fine tune the parameters. 
+
+As the above shows, the OOB error is the lowest when `mtry = 9`, hence model fit and prediction were proceeded using `mtry = 9`. The random forest performed far better when comparing the RMSE. 
+
+6.
+```{r importance plot}
+varImpPlot(bike_rf_tuned)
+```
+Both models considers `hr` as an important predictor. The linear model removed `workingday` and `weekday` variable and found some categories of `mnth` and `season` to be important, whereas the random forest seems to find `hr` the only important variable relative to others. 
+
+# Contribution
+Our group homework process goes as the following:\
+1. Each member attempts to complete the homework\
+2. Compare and discuss the answers\
+3. Complete a finalized version to submit\
+All members have contributed about the equal amount to complete this homework.  
+
+

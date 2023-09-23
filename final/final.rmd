@@ -1,0 +1,291 @@
+---
+title: "Final"
+author: |
+  | Chance Kang / A13605546 / csk025@ucsd.edu
+  | Jayden Kim / A16271107 / s0k003@ucsd.edu
+  | Sia Sheth / A16357789 / snsheth@ucsd.edu
+  | Math 189
+  | Spring 2023
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r lib import}
+library(ISLR2)
+library(glmnet)
+library(MASS)
+library(randomForest)
+library(tree)
+library(caret)
+library(e1071)
+library(car)
+library(boot)
+```
+# Application Question
+
+1. 
+```{r carseats}
+data(Carseats)
+car <- Carseats 
+```
+a.
+```{r cs lm}
+lm_cs <- lm(Sales ~ ., data = car)
+summary(lm_cs)$coefficients
+```
+b.
+```{r lm val}
+plot(lm_cs)
+```
+
+Residuals vs Fitted shows linearity and seems to show homoscedasticity. The points are well on the fitted line of the QQ plot so normality holds as well.
+
+c.
+
+$\beta_1 =$ `CompPrice` $\beta_2 =$ `Income` 
+
+$$
+\mathcal{H}_0 : \beta_1 = \beta_2 = 0
+$$
+$$\mathcal{H}_1 : \beta_i \neq 0, \text{ for at least one value of i} = 1,2$$
+$\mathcal{H}_0$ states there is no relationship between (`CompPrice`, `Income`), and `Sales`
+```{r refit}
+lm_cs_sub <- lm(Sales ~ CompPrice + Income, data = car)
+summary(lm_cs_sub)
+linearHypothesis(lm_cs_sub, c("CompPrice = 0", "Income = 0"))
+```
+Choosing $\alpha = 0.05$ and test static as f-statistic, hence we reject null hypothesis if f-statistic value of `linearHypothesis` matches model's reported f-statistic value, and corresponding p-value is < 0.05. Above rejects null hypothesis. Therefore, at least one of `CompPrice` and `Income` are statistically significant in refitted model when predicting `Sales`.  
+
+2.
+a.
+Train 80: Validation 20
+
+```{r train val test split}
+set.seed(123)
+train <- sample(1:nrow(car), nrow(car)*0.8)
+val <- (-train)
+car.train <- car[train,]
+car.val <- car[val,]
+x<-model.matrix(Sales~., data = car)[,-1]
+y<-car$Sales
+```
+
+b.
+`glmnet` defaults `nfolds = 10`, K = 10.
+
+```{r cv lambda}
+ridge.mod<-glmnet(x[train,], y[train], alpha = 0)
+set.seed(123)
+cv.out <- cv.glmnet(x[train,], y[train], alpha=0)
+bestlam<-cv.out$lambda.min
+print(bestlam)
+coef(cv.out)
+```
+
+c.
+```{r ridge pred}
+ridge.pred <- predict(ridge.mod, s = bestlam ,newx = x[val,])
+sqrt(mean((ridge.pred- y[val])^2))
+sd(car$Sales)
+```
+RMSE being far below the standard deviation of `Sales` suggests ridge regression performed well.
+
+d.
+```{r rand for}
+set.seed(123)
+rf <- randomForest(Sales ~ ., data = car, subset = train, mtry = 9, importance = TRUE)
+rf.pred <- predict(rf, newdata = car.val)
+sqrt(mean((rf.pred - car.val$Sales)^2))
+
+```
+
+e.
+A marketing team which advertises for this specific dataset may prefer ridge regression over random forest for its RMSE was lower, suggesting better performance. Ridge regression is also relatively simpler model than random forest, hence easier to interpret and faster to train. 
+A marketing team of TikTok, for example, may prefer to use random forest, for the data regarding user data may form a complex relationship and the company can handle the cost of training large data.
+
+3.
+a.
+```{r rt}
+set.seed(123)
+x <- rt(200,15)
+```
+
+b.
+```{r noise vector}
+set.seed(123)
+e <- rt(200,5)
+```
+
+c.
+```{r y}
+y <- 5 + (2*sin(x)) - (7 * (exp(2*cos(x))/(1+exp(2*cos(x))))) + e
+```
+d. 
+```{r poly reg}
+data <- data.frame(y,x)
+
+ggplot(data = data, aes(x = x, y = y)) + geom_point(size = 0.5) + geom_smooth(method = 'lm', se = FALSE, formula = y ~ x, size = 0.5, aes(color = 'p1')) + geom_smooth(method = 'lm', se = FALSE, formula = y ~ poly(x,2), size = 0.5, aes(color = 'p2')) + geom_smooth(method = 'lm', se = FALSE, formula = y ~ poly(x,3), size = 0.5, aes(color = 'p3')) + geom_smooth(method = 'lm', se = FALSE, formula = y ~ poly(x,4), size = 0.5, aes(color = 'p4')) + geom_smooth(method = 'lm',se = FALSE, formula = y ~ poly(x,5), size = 0.5, aes(color = 'p5')) + scale_color_manual(name = 'Poly', values = c('p1' = 'red', 'p2' = 'green', 'p3' = 'blue', 'p4' = 'orange', 'p5' = 'magenta'))
+```
+
+e.
+```{r rmse}
+
+lm_p1 <- lm(y ~ x, data = data)
+lm_p2 <- lm(y ~ poly(x,2), data = data)
+lm_p3 <- lm(y ~ poly(x,3), data = data)
+lm_p4 <- lm(y ~ poly(x,4), data = data)
+lm_p5 <- lm(y ~ poly(x,5), data = data)
+
+sqrt(mean(lm_p1$residuals^2))
+sqrt(mean(lm_p2$residuals^2))
+sqrt(mean(lm_p3$residuals^2))
+sqrt(mean(lm_p4$residuals^2))
+sqrt(mean(lm_p5$residuals^2))
+```
+Aside from `lm_p1`, the model fits the observed data points relatively well. The mean squared of residuals suggests that `lm_p5` performed the best amongs the models, hence we will choose `lm_p5`.
+
+f.
+```{r lsm}
+lsm <- predict(lm_p2,newdata=data.frame(x=1.00), interval = "confidence", level = 0.9)
+lsm
+```
+
+The confidence interval of the polynomial regression model with order 2 is [0.7553318, 1.222551] and implies that we can be 90% confident that the true response value at X = 1 falls between 0.7553318 and 1.222551. This interval accounts for the uncertainty in the estimated coefficients and provides a measure of precision for predicting the response value at X = 1 based
+on the given model.
+
+g.
+```{r bootstrap}
+set.seed(123)
+b_up <- rep(NA, 1000)
+b_lw <- rep(NA, 1000)
+for(i in 1:1000) {
+  ind <- sample(1:nrow(data),nrow(data), replace = TRUE)
+  t_pred<- predict(lm(y ~ poly(x,2), data = data[ind,]), newdata = data.frame(x=1.00), interval = "confidence", level = 0.9)
+  b_lw[i] <- t_pred[2]
+  b_up[i] <- t_pred[3]
+}
+c(mean(b_lw), mean(b_up))
+```
+
+The mean confidence interval of the polynomial regression model with order 2 is [0.8035222, 1.3035238] through bootstrapping 1000 iterations, and implies that we can be 90% confident that the true response value at X = 1 falls between 0.8035222 and 1.3035238. The reported confidence interval come close to the confidence interval from using least squares theory, hence safe to assume both methods agree on the confidence interval derived.
+
+4.
+```{r College load}
+data(College)
+```
+a.
+Train 80: Validation 20
+
+```{r split}
+set.seed(123)
+train <- sample(1:nrow(College), nrow(College)*0.8)
+val <- (-train)
+col.train <- College[train,]
+col.val <- College[val,]
+```
+
+b.
+```{r log reg}
+logr <- glm(Private ~ ., data = col.train, family = 'binomial')
+summary(logr)
+```
+
+`Top10perc` is relatively insignificant in contributing to whether a school is private or not.
+
+c.
+Using accuracy,
+
+```{r log reg error}
+logpred <- predict(logr,newdata=col.val,type='response')
+class_preds <- logpred > 0.5
+pred_table <- table(col.val$Private, class_preds)
+1-mean(sum(diag(pred_table))/sum(pred_table))
+```
+
+d.
+```{r LDA}
+lda <- lda(Private ~ ., data = College, subset = train)
+lda_pred <- predict(lda, col.val)
+1-mean(lda_pred$class == col.val$Private)
+```
+
+e.
+```{r QDA}
+qda <- qda(Private ~ ., data = College, subset = train)
+qda_pred <- predict(qda, col.val)
+1-mean(qda_pred$class == col.val$Private)
+```
+
+f.
+```{r SVM}
+tunesvm <- tune(e1071::svm, Private ~., data = col.train, kernel = 'linear', ranges = list(cost = c(0.001, 0.01, 0.1, 1, 5, 10, 50)))
+bestmod <- tunesvm$best.model
+svmpred <- predict(bestmod, col.val)
+1-mean(svmpred == col.val$Private)
+```
+g.
+
+The best model other than logistic seems to be the SVM model because it has the lowest test error. This makes sense because all of the other models rely on underlying assumptions about the probability distribution, whereas the SVM model does not. The SVM model works by constructing a hyperplane that maximizes class separation, so it makes sense that this use case would produce accurate results using the SVM model.
+
+5.
+```{r protein}
+protein <- read.csv("./protein.csv")
+proteinOG <-protein
+protein <- protein[,-1:-2]
+```
+
+a.
+```{r pca}
+pca <- prcomp(protein, scale = TRUE)
+summary(pca)$importance[2,] #p of variance
+summary(pca)$importance[3,] #cum p of variance
+```
+
+b.
+```{r pc inter}
+pca$rotation
+```
+
+PC1 is highly correlated with Cereal and Nuts while negatively correlated with Red_Meat, White_Meat, Eggs, and Milk. PC2 is shows high correlation with Fish and Fruits_Vegetables and negative correlation with White_Meat and Cereal. Such suggests PC1 is likely to be negatively correlated with land animal livestock products. From part a, PC1 explains 44.51% of variance of the data and PC2 explains 18.16%.
+
+c.
+```{r biplot}
+biplot(pca$x[,1:2], pca$rotation[,1:2], cex = 0.5)
+```
+
+Most correlated: White_Meat
+
+Unrelated: Fish
+
+Negatively correlated: Nuts
+
+d.
+```{r protein OG}
+rownames(subset(proteinOG, Region == "Center"))
+rownames(subset(proteinOG, Region == "North"))
+```
+
+The above is printed row index for countries in region Center and North. Corresponding numbers are also plotted in biplot.
+
+The subset of data with Region reported as Center have relatively low PC2 score (around 0) regardless of its PC1 score aside from entry 9. Such suggests the countries in Center region lacks intake from white meat and cereal. Countries in the North region have relatively low PC1 score with it's PC2 score being around 0. Such suggests that countries in North region lacks intake from land animal livestock products. 
+
+# Conceptual Question
+
+6.
+The Bootstrap is a resampling technique meant to provide uncertainty estimates of model parameters. In random forests, we are able to use bootstrapping for bagging (bootstrap aggregation), to reduce the variance of a statistical learning method, this splitting each decision tree in a random forest and training them in individual bootstrap training sets to find the average of the resulting predictions. The goal of linear regression is to apply all of our data to determine a relationship between our variables. This method applies a linear relationship between the codependent variables, which is why we use a "best fit line" of our data, and to use bootstrap in linear regression to separate models and average the predictions will not provide a predictive performance of a model in comparison to bootstrapping for random forests.
+
+7.
+A scenario where we would test multiple hypotheses but would not want to correct for FWER (Family-Wise Error Rate) or FDR (False Discovery Rate) would be when we want to conduct an experiment to study human genes and find any genes that are linked to a specific, understudied disease. Since we do not have enough knowledge about this diseases, we would not have a specific gene, or genetic sequences linked to the disease. In this scenario, we would rather focus on controlling and decreasing false negatives (Type II errors) rather than controlling the risk of false positives (Type I errors), because we would rather accept a higher false positive rate since our goal is to identify the gene and/or sequences associated with this disease that can provided results for the experiment. Thus, our priority with this scenario where we do not want to correct for FWER or FDR is to identify variables before drawing conclusions.
+
+8.
+It is necessary to be aware of and check a model’s assumptions, for the models are built based on their assumptions. Since there is not a single model that fit all situations, assumptions ensure model performs the way it is designed to. For example, if the assumptions of linearity or independence are violated in a linear regression model, the model's predictions may be unreliable. Hence, checking for model not only results in accurate prediction and analysis but also enable model users to take necessary steps to ensure that the model assumptions are met.
+
+# Contribution
+Our group homework process goes as the following:\
+1. Each member attempts to complete the homework\
+2. Compare and discuss the answers\
+3. Complete a finalized version to submit\
+All members have contributed about the equal amount to complete this homework.  
+
+

@@ -1,0 +1,69 @@
+---
+title: "Homework 2"
+author: |
+  | Chance Kang / A13605546 / csk025@ucsd.edu
+  | Jayden Kim / A16271107 / s0k003@ucsd.edu
+  | Sia Sheth / A16357789 / snsheth@ucsd.edu
+  | Math 189
+  | Spring 2023
+output:
+  pdf_document: default
+  html_document: default
+---
+
+# Conceptual Question 
+1. Principal Component Analysis (PCA) takes multiple categories and sum them up into new "components" so that one can observe data in less complex dimensions (2-D,3-D). PCA chooses these categories that minimizes that data loss and maximizes the data separability. One can conceptualize PCA as the following: there are multiple measurements taken account for making a t-shirt. PCA takes these measurements and produces new components sizes S, M, and L.
+
+# Application Question
+1a.
+```{r scaled pca}
+data(USArrests)
+states <- row.names(USArrests)
+arrests <- USArrests
+pcaScale <- prcomp(arrests, scale = TRUE)
+pcaScale$rotation
+```
+1b.
+From part a, the largest coefficients of PC1 responds to the three categories: Murder, Assault and Rape. Hence, high PC1 score may suggest high rate of violent crime or crime against persons.\
+The largest coefficients of PC2 responds to Urban Population, hence high PC2 score directly correlates to the urban population of the state.\
+Note that both PC1, PC2 have negative coefficient, meaning lesser the value of PC1, PC2, the higher the score of PC1, PC2. \
+1c.
+```{r scaled pve}
+pcaScaleVar <-pcaScale$sdev^2
+pveScale<-pcaScaleVar/sum(pcaScaleVar)
+pveScale
+```
+2a.
+```{r not scaled pca}
+pcaScaleNot <- prcomp(arrests, scale = FALSE)
+pcaScaleNot$rotation
+```
+2b.
+The same argument as Part 1 is used to derive the following: PC1 responds to Assault, PC2 responds to Urban Population. High PC1 score of a state means higher arrests of murder in the state, high PC2 score of a state means higher percent of urban population in the state. Such is because the data set was not scaled before performing PCA.\
+2c.
+```{r not scaled pve}
+pcaScaleNotVar <-pcaScaleNot$sdev^2
+pveScaleNot<-pcaScaleNotVar/sum(pcaScaleNotVar)
+pveScaleNot
+```
+3.
+Results from part 1 and 2 seem to include all of the original variables among the PCs. First, PC2 of part 1 represents the Urban Population variable and PC1 represents the rest of the variables. Each PC (1~4) of part 2 seems to represent a single variable. However, the proportion of variability explained in PC1 of part 1 takes 62% and PC2 takes 24% of the PVE whereas PC1 of part 2 takes up about 96% of the PVE. Hence, PCA of part 2 cares mostly about only the Assault variable. Such is because PCA maximizes variance and some variables may be prioritized for its high magnitude (hence high variance). The USArrests data set shows relatively higher arrests of assault compared to the rest of the variables. Hence, part 2, PCA without scaling, showed PCA prioritizing the Assault variable (for it was represented by PC1). Overall, part 1 successfully reduces the dimension of USArrests data set with substantial results from PCA with scaled data whereas part 2 shows misleading results from PCA with absence of scaling data. 
+4.
+```{r plot, out.width = '100%', fig.align='center'}
+biplot(pcaScale, scale = 0,expand = 2, cex = 0.5, xlim = c(-4,5), ylim = c(-3,3))
+```
+```{r USArrest}
+USArrests[,c(1,3)]
+USArrests[c("Mississippi"),c(1,3)]
+```
+Yes it does make sense that Mississippi is placed where the problem suggests.
+As the above shows, Mississippi shows the highest reported murder arrests among the states with one of the smallest urban population percentage. Hence it is close to the "Murder" vector and is far from "UrbanPop" vector.
+
+# Contribution
+Our group homework process goes as the following:\
+1. Each member attempts to complete the homework\
+2. Compare and discuss the answers\
+3. Complete a finalized version to submit\
+All members have contributed about the equal amount to complete this homework.  
+
+
